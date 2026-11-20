@@ -1,0 +1,240 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="./output.css" rel="stylesheet">
+    </head>
+    <body class="bg-black/5">
+        <div class="flex flex-col gap-4 p-4 items-center">
+            <!-- Первая строка: 5 квадратов (жёлтый игрок) -->
+            <div id="row-yellow" class="flex gap-2 justify-center">
+                <div class="square bg-yellow-500 text-white font-bold text-xl drop-shadow cursor-pointer select-none transition-transform" data-value="1" data-owner="yellow">1</div>
+                <div class="square bg-yellow-500 text-white font-bold text-xl drop-shadow cursor-pointer select-none transition-transform" data-value="2" data-owner="yellow">2</div>
+                <div class="square bg-yellow-500 text-white font-bold text-xl drop-shadow cursor-pointer select-none transition-transform" data-value="3" data-owner="yellow">3</div>
+                <div class="square bg-yellow-500 text-white font-bold text-xl drop-shadow cursor-pointer select-none transition-transform" data-value="4" data-owner="yellow">4</div>
+                <div class="square bg-yellow-500 text-white font-bold text-xl drop-shadow cursor-pointer select-none transition-transform" data-value="5" data-owner="yellow">5</div>
+            </div>
+
+            <!-- Поле 3×3 -->
+            <div id="board" class="grid grid-cols-3 gap-2 w-max mx-auto">
+                <div class="square bg-white shadow-md outline outline-black/5 cursor-pointer select-none" data-index="0"></div>
+                <div class="square bg-white shadow-md outline outline-black/5 cursor-pointer select-none" data-index="1"></div>
+                <div class="square bg-white shadow-md outline outline-black/5 cursor-pointer select-none" data-index="2"></div>
+                <div class="square bg-white shadow-md outline outline-black/5 cursor-pointer select-none" data-index="3"></div>
+                <div class="square bg-white shadow-md outline outline-black/5 cursor-pointer select-none" data-index="4"></div>
+                <div class="square bg-white shadow-md outline outline-black/5 cursor-pointer select-none" data-index="5"></div>
+                <div class="square bg-white shadow-md outline outline-black/5 cursor-pointer select-none" data-index="6"></div>
+                <div class="square bg-white shadow-md outline outline-black/5 cursor-pointer select-none" data-index="7"></div>
+                <div class="square bg-white shadow-md outline outline-black/5 cursor-pointer select-none" data-index="8"></div>
+            </div>
+
+            <!-- Третья строка: 5 квадратов (лаймовый игрок) -->
+            <div id="row-lime" class="flex gap-2 justify-center">
+                <div class="square bg-lime-500 text-white font-bold text-xl drop-shadow cursor-pointer select-none transition-transform" data-value="1" data-owner="lime">1</div>
+                <div class="square bg-lime-500 text-white font-bold text-xl drop-shadow cursor-pointer select-none transition-transform" data-value="2" data-owner="lime">2</div>
+                <div class="square bg-lime-500 text-white font-bold text-xl drop-shadow cursor-pointer select-none transition-transform" data-value="3" data-owner="lime">3</div>
+                <div class="square bg-lime-500 text-white font-bold text-xl drop-shadow cursor-pointer select-none transition-transform" data-value="4" data-owner="lime">4</div>
+                <div class="square bg-lime-500 text-white font-bold text-xl drop-shadow cursor-pointer select-none transition-transform" data-value="5" data-owner="lime">5</div>
+            </div>
+
+            <!-- Статус и кнопка -->
+            <div class="flex flex-col items-center gap-2 mt-2">
+                <div id="status" class="text-sm font-medium text-gray-700">Ход: жёлтый (игрок 1)</div>
+                <button id="restart" class="px-4 py-2 rounded bg-gray-800 text-white text-sm font-medium hover:bg-gray-700 active:bg-gray-900 transition-colors">
+                    Новая игра
+                </button>
+            </div>
+        </div>
+
+        <script>
+            const board = document.getElementById('board');
+            const statusEl = document.getElementById('status');
+            const restartBtn = document.getElementById('restart');
+            const rows = {
+                yellow: document.getElementById('row-yellow'),
+                lime: document.getElementById('row-lime')
+            };
+
+            let currentPlayer = 'yellow';
+            let selected = null;
+            let gameOver = false;
+            let boardState = Array(9).fill(null);
+
+            const colorClasses = {
+                yellow: ['bg-yellow-500', 'text-white'],
+                lime: ['bg-lime-500', 'text-white']
+            };
+
+            const LINES = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                [0, 4, 8], [2, 4, 6]
+            ];
+
+            function otherPlayer(p) {
+                return p === 'yellow' ? 'lime' : 'yellow';
+            }
+
+            function updateStatus(text) {
+                statusEl.textContent = text || `Ход: ${currentPlayer === 'yellow' ? 'жёлтый (игрок 1)' : 'лаймовый (игрок 2)'}`;
+            }
+
+            function checkWin(owner) {
+                for (const line of LINES) {
+                    if (line.every(i => boardState[i] && boardState[i].owner === owner)) {
+                        return line;
+                    }
+                }
+                return null;
+            }
+
+            function onRowClick(e) {
+                if (gameOver) return;
+                const cell = e.currentTarget;
+                if (cell.dataset.used === 'true') return;
+                if (cell.dataset.owner !== currentPlayer) {
+                    updateStatus(`Сейчас ход: ${currentPlayer === 'yellow' ? 'жёлтый' : 'лаймовый'}`);
+                    return;
+                }
+                if (selected && selected.el) {
+                    selected.el.classList.remove('scale-110', 'ring-4', 'ring-black/20');
+                }
+                if (selected && selected.el === cell) {
+                    selected = null;
+                    return;
+                }
+                selected = {
+                    el: cell,
+                    value: parseInt(cell.dataset.value, 10),
+                    owner: cell.dataset.owner
+                };
+                cell.classList.add('scale-110', 'ring-4', 'ring-black/20');
+            }
+
+            function onBoardClick(e) {
+                if (gameOver) return;
+                const cell = e.currentTarget;
+                const index = parseInt(cell.dataset.index, 10);
+
+                if (!selected) {
+                    updateStatus('Сначала выберите свой квадрат 1–5');
+                    return;
+                }
+                if (selected.owner !== currentPlayer) {
+                    updateStatus('Это не ваш квадрат');
+                    return;
+                }
+
+                const target = boardState[index];
+
+                if (target === null) {
+                    placePiece(index, selected.value, selected.owner);
+                    finishTurn();
+                    return;
+                }
+
+                if (target.owner === selected.owner) {
+                    updateStatus('Здесь уже ваша фишка');
+                    return;
+                }
+
+                if (selected.value > target.value) {
+                    placePiece(index, selected.value, selected.owner);
+                    finishTurn();
+                } else {
+                    updateStatus(`Недостаточно: ${selected.value} ≤ ${target.value}. Выберите другой квадрат или клетку.`);
+                }
+            }
+
+            function placePiece(index, value, owner) {
+                boardState[index] = { value, owner };
+                const cell = board.children[index];
+                cell.className = 'square shadow-md outline outline-black/5 cursor-pointer select-none flex items-center justify-center font-bold text-xl';
+                cell.classList.add(...colorClasses[owner]);
+                cell.textContent = String(value);
+            }
+
+            function finishTurn() {
+                selected.el.dataset.used = 'true';
+                selected.el.classList.remove('scale-110', 'ring-4', 'ring-black/20', 'cursor-pointer');
+                selected.el.classList.add('bg-gray-400', 'opacity-50', 'cursor-not-allowed');
+                selected.el.classList.remove('bg-yellow-500', 'bg-lime-500');
+                selected = null;
+
+                const winner = currentPlayer;
+                const winLine = checkWin(winner);
+                if (winLine) {
+                    endGame(winner, winLine);
+                    return;
+                }
+
+                if (boardState.every(c => c !== null)) {
+                    endGame(null, null);
+                    return;
+                }
+
+                currentPlayer = otherPlayer(currentPlayer);
+                updateStatus();
+            }
+
+            function endGame(winner, winLine) {
+                gameOver = true;
+                if (winLine) {
+                    winLine.forEach(i => {
+                        board.children[i].classList.add('ring-4', 'ring-black/40', 'scale-105');
+                    });
+                }
+                if (winner) {
+                    const name = winner === 'yellow' ? 'жёлтый (игрок 1)' : 'лаймовый (игрок 2)';
+                    updateStatus(`Победа: ${name}!`);
+                    statusEl.classList.add('text-lg', 'font-bold', 'text-black');
+                } else {
+                    updateStatus('Ничья!');
+                    statusEl.classList.add('text-lg', 'font-bold', 'text-black');
+                }
+                document.querySelectorAll('.square').forEach(el => {
+                    el.classList.add('cursor-not-allowed');
+                    el.dataset.used = 'true';
+                });
+            }
+
+            // Сброс игры
+            function resetGame() {
+                currentPlayer = 'yellow';
+                selected = null;
+                gameOver = false;
+                boardState = Array(9).fill(null);
+
+                // Сброс статуса
+                statusEl.className = 'text-sm font-medium text-gray-700';
+                updateStatus();
+
+                // Сброс квадратов 1–5
+                const baseRowClasses = ['square', 'text-white', 'font-bold', 'text-xl', 'drop-shadow', 'cursor-pointer', 'select-none', 'transition-transform'];
+                rows.yellow.querySelectorAll('.square').forEach(el => {
+                    el.className = baseRowClasses.join(' ') + ' bg-yellow-500';
+                    el.dataset.used = 'false';
+                    el.dataset.owner = 'yellow';
+                });
+                rows.lime.querySelectorAll('.square').forEach(el => {
+                    el.className = baseRowClasses.join(' ') + ' bg-lime-500';
+                    el.dataset.used = 'false';
+                    el.dataset.owner = 'lime';
+                });
+
+                // Сброс поля 3×3
+                board.querySelectorAll('.square').forEach((el, i) => {
+                    el.className = 'square bg-white shadow-md outline outline-black/5 cursor-pointer select-none';
+                    el.textContent = '';
+                    el.dataset.index = String(i);
+                });
+            }
+
+            rows.yellow.querySelectorAll('.square').forEach(el => el.addEventListener('click', onRowClick));
+            rows.lime.querySelectorAll('.square').forEach(el => el.addEventListener('click', onRowClick));
+            board.querySelectorAll('.square').forEach(el => el.addEventListener('click', onBoardClick));
+            restartBtn.addEventListener('click', resetGame);
+        </script>
+    </body>
+</html>
